@@ -1,13 +1,13 @@
 from docplex.mp.model import Model
 
 # UCITAVAMO PODATKE IZ FAJLA
-def load_data(naziv_fajla):
+def ucitaj_podatke(naziv_fajla):
     with open(naziv_fajla, 'r') as file:
         br_objekata = int(file.readline())                         # broj objekata
         br_klijenata = int(file.readline())                        # broj klijenata
         f = [float(x) for x in file.readline().split()]            # cijena izgradnje svakog objekta
         s = [int(x) for x in file.readline().split()]              # kapacitet svakog objekta
-        d = [int(x) for x in file.readline().split()]              # zahtjev svakog korisnika
+        d = [int(x) for x in file.readline().split()]              # zahtjev svakog korisnika/klijenta
 
         C = []                                                     # matrica rastojanja od objekta do korisnika, tj.troskovi transporta
         for i in range(br_objekata):
@@ -16,7 +16,7 @@ def load_data(naziv_fajla):
     return br_objekata, br_klijenata, f, s, d, C
 
 def rijesi_problem(naziv_fajla):
-    br_objekata, br_klijenata, f, s, d, C = load_data(naziv_fajla)
+    br_objekata, br_klijenata, f, s, d, C = ucitaj_podatke(naziv_fajla)
 
     # KREIRAMO MODEL 
     model = Model(name = 'SSCFLP problem')
@@ -28,7 +28,7 @@ def rijesi_problem(naziv_fajla):
     # matrica X[i][j], ako je j-ti korisnik pridruuzen objektu na lokaciji i ima vrijednost 1, inace 0
     X = [[model.binary_var(name = f"X_{i}_{j}") for j in range(br_klijenata)] for i in range(br_objekata)]
 
-    # DEFINISEMO FUNKCIJU CILJA, minimizacija troskova transporta
+    # DEFINISEMO FUNKCIJU CILJA, minimiziranje troskova transporta
     prva_suma = model.sum(f[i] * y[i] for i in range(br_objekata))
     druga_suma = model.sum(C[i][j] * X[i][j] for j in range(br_klijenata) for i in range(br_objekata))
     ukupna_cijena = prva_suma + druga_suma
@@ -41,7 +41,7 @@ def rijesi_problem(naziv_fajla):
 
     # ukupna potraznja ne smije prelaziti maksimalni kapacitet objekta, i klijent smije biti dodijeljen samo otvorenom objektu
     for i in range(br_objekata):
-        model.add_constraint(model.sum(d[j] * X[i][j] for j in range(br_klijenata)) <= model.sum(s[i] * y[i]))
+        model.add_constraint(model.sum(d[j] * X[i][j] for j in range(br_klijenata)) <= (s[i] * y[i]))
 
     # RJESAVAMO MODEL
     model.set_time_limit(7200)
@@ -51,15 +51,22 @@ def rijesi_problem(naziv_fajla):
     # ISPIS REZULTATA
     if solution:
         print(naziv_fajla)
-        print('\t'+ model.solve_details.status)
+        print('\t' + model.solve_details.status)
         print(f'\tRjesenje je pronadjeno: {solution.objective_value}')
         print(f'\tBroj iteracija: {model.solve_details.nb_iterations}')
         print(f'\tVrijeme izvrsavanja: {model.solve_details.time}')
         print(f'\tBroj cvorova: {model.solve_details.nb_nodes_processed}')
     else:
-        print('Rjesenje nije pronadjeno')
+        print(naziv_fajla)
+        print('\tRjesenje nije pronadjeno')
 
-for i in range(13,20):
+for i in range(20):
+    rijesi_problem(f'./instance/mala{i+1}.txt')
+
+for i in range(20):
+    rijesi_problem(f'./instance/srednja{i+1}.txt')
+
+for i in range(20):
     rijesi_problem(f'./instance/velika{i+1}.txt')
 
 
